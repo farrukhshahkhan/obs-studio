@@ -33,8 +33,6 @@
 #define info(format, ...)  do_log(LOG_INFO,    format, ##__VA_ARGS__)
 #define debug(format, ...) do_log(LOG_DEBUG,   format, ##__VA_ARGS__)
 
-#define ENABLE_AMBISONIC_ENCODING		1
-
 
 struct aac_encoder {
 	obs_encoder_t    *encoder;
@@ -53,9 +51,10 @@ struct aac_encoder {
 
 	int              frame_size; /* pretty much always 1024 for AAC */
 	int              frame_size_bytes;
+	int              is_ambisonic;
 };
 
-#if ENABLE_AMBISONIC_ENCODING
+//#if ENABLE_AMBISONIC_ENCODING
 struct ambix_info {
 	float sin_theta, sin_phi;
 	float cos_theta, cos_phi;
@@ -90,8 +89,6 @@ static bool ambisonic_encode(struct encoder_frame *frame, struct aac_encoder *en
 	}
 	return true;
 }
-#endif
-
 
 static const char *aac_getname(void *unused)
 {
@@ -142,28 +139,7 @@ static bool initialize_codec(struct aac_encoder *enc)
 		warn("Failed to create audio buffer: %s", av_err2str(ret));
 		return false;
 	}
-#if ENABLE_AMBISONIC_ENCODING
-	// open ambix config file for phi and and theta and init ambix channel info
-	FILE *fp = fopen("/tmp/ambix_info.txt", "r");
 
-	if (fp){
-		blog(LOG_INFO, "FSK: OPENED ambix_info.txt file ---------------------------------");
-		float mulfactor = 3.1415926535f / 180.0f;
-		for (int i = 0; i < MAX_AV_PLANES; i++){
-			float theta, phi;
-			if (fscanf(fp, "%f %f", &theta, &phi) != 2)
-				break;
-			ambix_chan_info[i].sin_theta = sinf(theta*mulfactor);
-			ambix_chan_info[i].sin_phi = sinf(phi*mulfactor);
-			ambix_chan_info[i].cos_theta = sinf(theta*mulfactor);
-			ambix_chan_info[i].cos_phi = sinf(phi*mulfactor);
-		}
-	}
-	else {
-		blog(LOG_INFO, "FSK: DID NOT OPENED  ambix_info.txt file ---------------------------------");
-	}
-	fclose(fp);
-#endif
 	return true;
 }
 
@@ -212,17 +188,42 @@ static void *aac_create(obs_data_t *settings, obs_encoder_t *encoder)
 		warn("Failed to create codec context");
 		goto fail;
 	}
+//#if ENABLE_AMBISONIC_ENCODING
+	    // open ambix config file for phi and and theta and init ambix channel info
+	    FILE *fp = fopen("/tmp/ambix_info.txt", "r");
 
+	    if (fp){
+	        blog(LOG_INFO, "FSK: OPENED ambix_info.txt file ---------------------------------");
+	        enc->is_ambisonic = 1;
+	        float mulfactor = 3.1415926535f / 180.0f;
+	        for (int i = 0; i < MAX_AV_PLANES; i++){
+	            float theta, phi;
+	            if (fscanf(fp, "%f %f", &theta, &phi) != 2)
+	                break;
+	            ambix_chan_info[i].sin_theta = sinf(theta*mulfactor);
+	            ambix_chan_info[i].sin_phi = sinf(phi*mulfactor);
+	            ambix_chan_info[i].cos_theta = sinf(theta*mulfactor);
+	            ambix_chan_info[i].cos_phi = sinf(phi*mulfactor);
+	        }
+	        fclose(fp);
+	    }
+	    else {
+	        enc->is_ambisonic = 0;
+	        blog(LOG_INFO, "FSK: DID NOT OPENED  ambix_info.txt file ---------------------------------");
+	    }
 	enc->context->bit_rate    = bitrate * 1000;
-#if ENABLE_AMBISONIC_ENCODING
-	enc->context->channels = 4;
-	enc->context->channel_layout = AV_CH_LAYOUT_4POINT0;
-#else
-	enc->context->channels = (int)audio_output_get_channels(audio);
-#endif
+//#if ENABLE_AMBISONIC_ENCODING
+	if (enc->is_ambisonic)
+	{
+	    enc->context->channels = 4;
+	    enc->context->channel_layout = AV_CH_LAYOUT_4POINT0;
+	}
+	else
+	    enc->context->channels = (int)audio_output_get_channels(audio);
+
 	enc->context->sample_rate = audio_output_get_sample_rate(audio);
 	enc->context->sample_fmt  = enc->aac->sample_fmts ?
-		enc->aac->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
+	        enc->aac->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
 
 	/* if using FFmpeg's AAC encoder, at least set a cutoff value
 	 * (recommended by konverter) */
@@ -306,12 +307,14 @@ static bool aac_encode(void *data, struct encoder_frame *frame,
 		struct encoder_packet *packet, bool *received_packet)
 {
 	struct aac_encoder *enc = data;
-#if ENABLE_AMBISONIC_ENCODING
-	ambisonic_encode(frame, enc);
-#else
-	for (size_t i = 0; i < enc->audio_planes; i++)
-		memcpy(enc->samples[i], frame->data[i], enc->frame_size_bytes);
-#endif
+//#if ENABLE_AMBISONIC_ENCODING
+	if (env->is_ambisonic)
+	    ambisonic_encode(frame, enc);
+	else
+	{
+	    for (size_t i = 0; i < enc->audio_planes; i++)
+	        memcpy(enc->samples[i], frame->data[i], enc->frame_size_bytes);
+	}
 
 	return do_aac_encode(enc, packet, received_packet);
 }
@@ -345,6 +348,8 @@ static void aac_audio_info(void *data, struct audio_convert_info *info)
 {
 	struct aac_encoder *enc = data;
 	info->format = convert_ffmpeg_sample_format(enc->context->sample_fmt);
+	if (enc->is_ambisonic)
+	    info->speaker_layout = SPEAKERS_QUAD;
 }
 
 static size_t aac_frame_size(void *data)
