@@ -308,7 +308,7 @@ static bool aac_encode(void *data, struct encoder_frame *frame,
 {
 	struct aac_encoder *enc = data;
 //#if ENABLE_AMBISONIC_ENCODING
-	if (env->is_ambisonic)
+	if (enc->is_ambisonic)
 	    ambisonic_encode(frame, enc);
 	else
 	{
@@ -349,7 +349,7 @@ static void aac_audio_info(void *data, struct audio_convert_info *info)
 	struct aac_encoder *enc = data;
 	info->format = convert_ffmpeg_sample_format(enc->context->sample_fmt);
 	if (enc->is_ambisonic)
-	    info->speaker_layout = SPEAKERS_QUAD;
+	    info->speakers = SPEAKERS_QUAD;
 }
 
 static size_t aac_frame_size(void *data)
