@@ -136,7 +136,7 @@
             ],
             "recommended": {
                 "keyint": 2,
-                "max video bitrate": 3500,
+                "max video bitrate": 6000,
                 "max audio bitrate": 160,
                 "x264opts": "scenecut=0"
             }
@@ -842,8 +842,8 @@
             "recommended": {
                 "keyint": 2,
                 "profile": "main",
-                "max video bitrate": 2000,
-                "max audio bitrate": 160
+                "max video bitrate": 3500,
+                "max audio bitrate": 128
             }
         },
         {
@@ -852,6 +852,15 @@
                 {
                     "name": "Default",
                     "url": "rtmp://plive.pandora.tv:80/mediaHub"
+                }
+            ]
+        },
+        {
+            "name": "LiveStream",
+            "servers": [
+                {
+                    "name": "Primary",
+                    "url": "rtmp://rtmpin.livestreamingest.com/rtmpin"
                 }
             ]
         }
