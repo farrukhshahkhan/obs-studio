@@ -161,7 +161,7 @@ static inline void render_display_begin(struct obs_display *display,
 
 	gs_clear(GS_CLEAR_COLOR | GS_CLEAR_DEPTH | GS_CLEAR_STENCIL,
 			&clear_color, 1.0f, 0);
-
+//FSK: Here we should do texture map on a sphere...
 	gs_enable_depth_test(false);
 	/* gs_enable_blending(false); */
 	gs_set_cull_mode(GS_NEITHER);

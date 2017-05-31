@@ -192,9 +192,20 @@ extern void obs_view_free(struct obs_view *view);
 /* ------------------------------------------------------------------------- */
 /* displays */
 
+struct obs_latlong_info { //FSK
+    int                           radius;   // radius between [0..100]
+    int                           phi;      // x->y: 0..360
+    int                           theta;    // z->xy: 0..180
+    int                           fov_phi;  // fov = phi-fov_phi/2 .. phi+fov_phi/2
+    int                           fov_theta;// fov = theta-fov_theta/2 .. theta+fov_theta/2
+//    gs_effect_t                   *effect;
+};
+
 struct obs_display {
 	bool                            size_changed;
 	bool                            enabled;
+	bool                            latlong_on; //FSK
+	struct obs_latlong_info         latlong_info; //FSK
 	uint32_t                        cx, cy;
 	uint32_t                        background_color;
 	gs_swapchain_t                  *swap;

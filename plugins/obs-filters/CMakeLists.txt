@@ -23,6 +23,7 @@ set(obs-filters_SOURCES
 	color-correction-filter.c
 	async-delay-filter.c
 	crop-filter.c
+	latlong-filter.c
 	scale-filter.c
 	scroll-filter.c
 	chroma-key-filter.c
